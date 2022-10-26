@@ -1,24 +1,26 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import "./App.css";
+import { useEffect, useState } from "react";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import { getRows } from "./api";
 
+import { IRow } from "./types";
+import Table from "./components/Table";
 function App() {
+  const [rows, setRows] = useState<IRow[]>([]);
+
+  useEffect(() => {
+    getRows().then((data) => setRows(data));
+  }, []);
+  console.log("cells", rows);
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Header />
+
+      <div className="content">
+        <Sidebar />
+        <Table rows={rows} />
+      </div>
     </div>
   );
 }
