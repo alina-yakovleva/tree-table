@@ -1,17 +1,16 @@
-import TreeView from "@mui/lab/TreeView";
+import { TreeView, TreeItem } from "@mui/lab";
 
-import TreeItem from "@mui/lab/TreeItem";
+import { FC, useState, useMemo, useEffect } from "react";
+import { IRow } from "../../types";
 
-import "./index.scss";
-
-import { FC, useState } from "react";
-import { IRow, IRowData } from "../../types";
 import Icon1 from "../../assets/icon1.svg";
 import Icon2 from "../../assets/icon2.svg";
 import articleIcon from "../../assets/articleIcon.svg";
 import DeleteIcon from "../../assets/delete.svg";
-import { minWidth } from "@mui/system";
-import { createRowInEntity, deleteRow, getRows } from "../../api";
+
+import { createRowInEntity, deleteRow, getRows, updateRow } from "../../api";
+
+import "./index.scss";
 
 const cells: {
   field: keyof IRow | "buttons";
@@ -27,51 +26,19 @@ const cells: {
   { field: "estimatedProfit", name: "Сметная прибыль", minWidth: 200 },
 ];
 
-const Buttos: React.FC<{
-  row: IRow;
-  depth: number;
-  parentId: number | null;
-}> = ({ row, depth, parentId }) => {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "flex-end",
-      }}
-    >
-      <div
-        className="icons"
-        style={{
-          zIndex: 1000 - depth,
-        }}
-      >
-        {depth === 0 && (
-          <>
-            <img onClick={() => createRowInEntity(parentId)} src={Icon1} />
-          </>
-        )}
-        {(depth === 0 || depth === 1) && (
-          <>
-            <img onClick={() => createRowInEntity(row.id)} src={Icon2} />
-          </>
-        )}
-        <img src={articleIcon} />
-        <img src={DeleteIcon} onClick={() => deleteRow(row.id)} />
+const onPreventNotNumber = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const allowedKeys = ["Delete", "Backspace", "ArrowLeft", "ArrowRight"];
 
-        {depth !== 0 && (
-          <>
-            <div className="line line_horizontal" />
-            <div className="line line_vertical" />
-          </>
-        )}
-      </div>
-    </div>
-  );
+  if (allowedKeys.includes(e.key)) {
+    return;
+  }
+
+  const isNumber = /[0-9]/.test(e.key);
+
+  if (!isNumber) {
+    e.preventDefault();
+  }
 };
-
-interface ITableProps {
-  rows: IRow[];
-}
 
 const styles = {
   width: "100%",
@@ -80,13 +47,19 @@ const styles = {
 const Row: FC<{
   row: IRow;
   depth: number;
-  parentId: number | null;
-}> = ({ row, depth, parentId }) => {
+  onClick?: () => void;
+  onDelete?: () => void;
+  isLastParent?: boolean;
+  additionalLine?: boolean;
+}> = ({ row, depth, onClick, additionalLine, isLastParent, onDelete }) => {
+  const [localRow, setLocalRow] = useState(row);
+  const [editable, setEditable] = useState(false);
+
   return (
     <TreeItem
       nodeId={row.id.toString()}
       label={
-        <div className="row">
+        <div onDoubleClick={() => setEditable(true)} className="row">
           {cells.map((cell) => (
             <div
               style={{ minWidth: cell.minWidth, flex: cell.flex }}
@@ -94,9 +67,99 @@ const Row: FC<{
               key={cell.field}
             >
               {cell.field === "buttons" ? (
-                <Buttos row={row} depth={depth} parentId={parentId} />
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <div
+                    className="icons"
+                    style={{
+                      zIndex: 1000 - depth,
+                    }}
+                  >
+                    {depth === 0 && (
+                      <>
+                        <img onClick={onClick} src={Icon1} alt="folder" />
+                      </>
+                    )}
+                    {(depth === 0 || depth === 1) && (
+                      <>
+                        <img
+                          onClick={() =>
+                            createRowInEntity(row.id).then(({ current }) =>
+                              setLocalRow((state) => ({
+                                ...state,
+                                child: [
+                                  ...state.child,
+                                  { ...current, child: [] },
+                                ],
+                              }))
+                            )
+                          }
+                          src={Icon2}
+                          alt="folder"
+                        />
+                      </>
+                    )}
+                    <img src={articleIcon} alt="doc" />
+                    <img src={DeleteIcon} onClick={onDelete} alt="trash" />
+
+                    {depth !== 0 && (
+                      <>
+                        <div className="line line_horizontal" />
+                        <div className="line line_vertical" />
+                      </>
+                    )}
+                    {additionalLine && (
+                      <div className="line line_vertical folder" />
+                    )}
+                  </div>
+                </div>
+              ) : editable ? (
+                <input
+                  value={localRow[cell.field].toString()}
+                  onChange={(e) =>
+                    setLocalRow((state) => ({
+                      ...state,
+                      [cell.field]: e.target.value,
+                    }))
+                  }
+                  onKeyDown={(e) => {
+                    if (cell.field !== "rowName") {
+                      onPreventNotNumber(e);
+                    }
+
+                    if (e.key === "Enter") {
+
+                      const invalid = cells.some((c) =>
+                        c.field !== "buttons"
+                          ? localRow[c.field] === 0 ? false : !localRow[c.field]
+                          : false
+                      );
+
+                      if (invalid) {
+                        return;
+                      }
+
+                      setEditable(false);
+                      const { id, child, ...data } = localRow;
+
+                      updateRow(localRow.id, data as any);
+                    }
+                  }}
+                />
               ) : (
-                row[cell.field].toString()
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    height: "100%",
+                  }}
+                >
+                  {localRow[cell.field].toString()}
+                </div>
               )}
             </div>
           ))}
@@ -104,13 +167,42 @@ const Row: FC<{
       }
       key={row.id}
     >
-      {row.child.map((r) => (
-        <Row row={r} key={r.id} depth={depth + 1} parentId={row.id} />
+      {localRow.child.map((r, index, arr) => (
+        <Row
+          row={r}
+          key={r.id}
+          depth={depth + 1}
+          onDelete={() =>
+            deleteRow(r.id).then(() =>
+              setLocalRow((state) => ({
+                ...state,
+                child: state.child.filter((i) => i.id !== r.id),
+              }))
+            )
+          }
+          isLastParent={arr.length - 1 === index}
+          additionalLine={depth + 1 === 2 && !isLastParent}
+        />
       ))}
     </TreeItem>
   );
 };
-const Table: FC<ITableProps> = ({ rows }) => {
+
+const getRowIds = (rows: IRow[]): string[] =>
+  rows.reduce<string[]>(
+    (acc, row) => [...acc, row.id.toString(), ...getRowIds(row.child)],
+    []
+  );
+
+const Table: FC = () => {
+  const [rows, setRows] = useState<IRow[]>([]);
+
+  const expanded = useMemo(() => getRowIds(rows), [rows]);
+
+  useEffect(() => {
+    getRows().then(setRows);
+  }, []);
+
   return (
     <div className="t-content">
       <div className="t-content-header">
@@ -131,9 +223,23 @@ const Table: FC<ITableProps> = ({ rows }) => {
           ))}
         </div>
 
-        <TreeView sx={styles} defaultExpanded={["1", "2", "3"]}>
-          {rows.map((row, index) => (
-            <Row row={row} depth={0} parentId={null} key={row.id} />
+        <TreeView sx={styles} expanded={expanded} defaultExpanded={expanded}>
+          {rows.map((row) => (
+            <Row
+              row={row}
+              depth={0}
+              onClick={() =>
+                createRowInEntity(null).then(({ current }) =>
+                  setRows((state) => [...state, { ...current, child: [] }])
+                )
+              }
+              onDelete={() =>
+                deleteRow(row.id).then(() =>
+                  setRows((state) => state.filter((i) => i.id !== row.id))
+                )
+              }
+              key={row.id}
+            />
           ))}
         </TreeView>
       </div>

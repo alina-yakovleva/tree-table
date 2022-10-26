@@ -3,19 +3,23 @@
   width: 234px;
   background-color: #27272a;
   border-right: 1px solid #414144;
+
   &-column {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
+
   &-item {
     display: flex;
     gap: 10px;
     padding: 8px;
     cursor: pointer;
+
     &:hover {
       background: #a1a1aa;
     }
+
     span {
       font-family: "Roboto";
       font-style: normal;
@@ -27,6 +31,7 @@
     }
   }
 }
+
 .sidebar-header {
   padding: 15px 11px;
   display: flex;

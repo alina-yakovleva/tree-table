@@ -1,7 +1,6 @@
 import { IRow, IRowData } from "./types";
 
 const eID = 241;
-const ROW_NAME = "a09c8198-c6dc-4842-979e-d71abd23e13b";
 
 type IGetRowsResponse = IRow[];
 
@@ -10,7 +9,11 @@ export const getRows = (): Promise<IGetRowsResponse> =>
     response.json()
   );
 
-export const createRowInEntity = (parentId: number | null) =>
+type ICreateRowInEntityResponse = { changed: []; current: Omit<IRow, 'child'> };
+
+export const createRowInEntity = (
+  parentId: number | null
+): Promise<ICreateRowInEntityResponse> =>
   fetch(`/v1/outlay-rows/entity/${eID}/row/create`, {
     method: "POST",
     headers: {
