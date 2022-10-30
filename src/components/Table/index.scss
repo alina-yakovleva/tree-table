@@ -10,31 +10,22 @@
   letter-spacing: 0.1px;
   min-width: 200px;
 
-
   color: #ffffff;
   height: 60px;
   padding: 12px;
   border-bottom: 1px solid #414144;
+
+  &_head {
+    display: flex;
+    align-items: center;
+  }
 }
 
 .t-content {
   background-color: #202124;
   width: calc(100vw - 232px);
-
-  ul {
-    margin-left: 0 !important;
-  }
-
-  .MuiTreeItem-label {
-    padding: 0 !important;
-  }
-  .MuiTreeItem-content {
-    padding: 0 !important;
-  }
-  .MuiTreeItem-iconContainer {
-    display: none !important;
-  }
 }
+
 .t-content-header {
   background-color: #202124;
   border-bottom: 1px solid #414144;
@@ -56,6 +47,11 @@
   overflow-x: auto;
 }
 
+.icons-wrapper {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .icons {
   display: flex;
   gap: 6px;
@@ -73,11 +69,20 @@
       visibility: visible;
     }
   }
+
   img {
+    cursor: pointer;
+    
     &:not(:first-child) {
       visibility: hidden;
     }
   }
+}
+
+.cell-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 .line {
